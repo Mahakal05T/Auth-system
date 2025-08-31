@@ -18,6 +18,8 @@ from email.mime.text import MIMEText
 from twilio.rest import Client
 from dotenv import load_dotenv
 from ratelimit import limits, sleep_and_retry
+from urllib.parse import urlparse
+
 
 # ---------------- Config ----------------
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,11 +33,18 @@ ALLOWED_ROLES = {"user", "admin"}
 
 # ---------------- DB Utilities ----------------
 def connect_db():
+    db_url = os.getenv("DATABASE_URL")  # get the Railway DATABASE_URL
+    if not db_url:
+        raise Exception("DATABASE_URL environment variable not set")
+
+    # Parse the URL
+    url = urlparse(db_url)
     return mysql.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASS", ""),
-        database=os.getenv("DB_NAME", "auth_db")
+        host=url.hostname,
+        port=url.port or 3306,
+        user=url.username,
+        password=url.password,
+        database=url.path[1:]  # remove leading /
     )
 
 def hash_password(password):

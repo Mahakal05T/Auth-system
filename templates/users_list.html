@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+
+    <div class="max-w-6xl mx-auto">
+
+        <h2 class="text-2xl font-bold mb-4">User Management Panel</h2>
+
+        <!-- Role Filter -->
+        <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <label for="roleFilter" class="font-medium">Search by Role:</label>
+                <select id="roleFilter" onchange="filterUsers()" class="border rounded px-2 py-1">
+                    <option value="">All</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <!-- Add User Button -->
+            <button id="openModalBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">➕ Add User</button>
+        </div>
+
+        <!-- Modal -->
+        <div id="modalOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md animate-slideDown">
+                <h3 class="text-xl font-bold mb-3">Add New User</h3>
+                <form id="addUserForm" class="flex flex-col gap-2">
+                    <input type="text" name="name" placeholder="Full Name" required class="border rounded px-2 py-1 w-full">
+                    <input type="email" name="email" placeholder="Email" required class="border rounded px-2 py-1 w-full">
+                    <input type="text" name="phone" placeholder="Phone Number" required class="border rounded px-2 py-1 w-full">
+                    <select name="role" required class="border rounded px-2 py-1 w-full">
+                        <option value="user" selected>User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <div class="flex justify-end gap-2 mt-2">
+                        <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Add</button>
+                        <button type="button" id="closeModalBtn" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500">Cancel</button>
+                    </div>
+                </form>
+
+                <div id="responseMessage" class="mt-2 text-sm"></div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- User Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border rounded shadow-md">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-4 py-2 border">Emp ID</th>
+                        <th class="px-4 py-2 border">Name</th>
+                        <th class="px-4 py-2 border">Email</th>
+                        <th class="px-4 py-2 border">Phone</th>
+                        <th class="px-4 py-2 border">Role</th>
+                        <th class="px-4 py-2 border">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    {% for user in users %}
+                    <tr data-role="{{ user.role }}" class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border">{{ user.emp_id }}</td>
+                        <td class="px-4 py-2 border">{{ user.name }}</td>
+                        <td class="px-4 py-2 border">{{ user.email }}</td>
+                        <td class="px-4 py-2 border">{{ user.phone }}</td>
+                        <td class="px-4 py-2 border">
+                            <select onchange="changeRole({{ user.id }}, this.value)" class="border rounded px-2 py-1">
+                                <option value="user" {% if user.role=='user' %}selected{% endif %}>User</option>
+                                <option value="admin" {% if user.role=='admin' %}selected{% endif %}>Admin</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-2 border">
+                            <button onclick="deleteUser({{ user.id }}, '{{ user.name }}')" class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">🗑️ Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        const openBtn = document.getElementById("openModalBtn");
+        const closeBtn = document.getElementById("closeModalBtn");
+        const modal = document.getElementById("modalOverlay");
+
+        openBtn.onclick = () => modal.classList.remove("hidden");
+        closeBtn.onclick = () => modal.classList.add("hidden");
+
+        window.onclick = (e) => {
+            if (e.target === modal) modal.classList.add("hidden");
+        };
+
+        // Add User
+        document.getElementById("addUserForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                name: form.name.value,
+                email: form.email.value,
+                phone: form.phone.value
+            };
+            const res = await fetch("/admin/manage", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            const msgBox = document.getElementById("responseMessage");
+
+            if (res.ok) {
+                msgBox.innerHTML = `<p class="text-green-600">✔ ${result.message}<br>🆔 ${result.emp_id}<br>📧 Email: ${result.email_sent}<br>📱 SMS: ${result.sms_sent}</p>`;
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                msgBox.innerHTML = `<p class="text-red-600">❌ ${result.error}</p>`;
+            }
+        });
+
+        function filterUsers() {
+            const selectedRole = document.getElementById("roleFilter").value;
+            const rows = document.querySelectorAll("#userTableBody tr");
+            rows.forEach(row => {
+                const role = row.getAttribute("data-role");
+                row.style.display = (selectedRole === "" || role === selectedRole) ? "" : "none";
+            });
+        }
+
+        function deleteUser(userId, userName) {
+            if (!confirm(`Are you sure you want to delete user "${userName}"?`)) return;
+            fetch(`/admin/delete_user/${userId}`, { method: "DELETE" })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message || data.error);
+                    location.reload();
+                })
+                .catch(err => { alert("Something went wrong."); console.error(err); });
+        }
+
+        function changeRole(userId, role) {
+            fetch("/admin/set_role", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId, role: role })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) alert("❌ " + data.error);
+                else alert("✔ Role updated!");
+                location.reload();
+            })
+            .catch(err => console.error(err));
+        }
+    </script>
+
+    <style>
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slideDown { animation: slideDown 0.3s ease; }
+    </style>
+
+</body>
+</html>

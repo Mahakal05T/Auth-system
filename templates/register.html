@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+    <h2 class="text-2xl font-bold text-center">Register</h2>
+    <p class="text-center text-gray-600">Create your account</p>
+
+    <form id="registerForm" class="flex flex-col gap-3 relative">
+      <input type="text" id="name" placeholder="Full Name" required
+        class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <input type="email" id="email" placeholder="Email" required
+        class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <input type="text" id="phone" placeholder="Phone Number" required
+        class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+      <!-- Password Field -->
+      <div class="relative">
+        <input type="password" id="password" placeholder="Password" required
+          class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="button" id="togglePassword"
+          class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+      </div>
+
+      <!-- Confirm Password Field -->
+      <div class="relative">
+        <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+          class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="button" id="toggleConfirmPassword"
+          class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+      </div>
+
+      <button type="submit"
+        class="bg-green-600 text-white rounded px-3 py-2 hover:bg-green-700 transition">Sign Up</button>
+    </form>
+
+    <p class="text-center text-gray-600 text-sm">
+      Already have an account? 
+      <a href="{{ url_for('login_user') }}" class="text-blue-600 hover:underline">Login</a>
+    </p>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+  <!-- Loading Spinner -->
+  <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
+    <div class="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+
+  <script>
+    function showToast(message, type = "success") {
+      const toast = document.createElement("div");
+      toast.className = `px-4 py-2 rounded shadow text-white ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} animate-slideDown`;
+      toast.textContent = message;
+      document.getElementById("toast-container").appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Toggle password visibility
+    const passwordInput = document.getElementById("password");
+    const togglePasswordBtn = document.getElementById("togglePassword");
+    togglePasswordBtn.addEventListener("click", () => {
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        togglePasswordBtn.textContent = "🙈";
+      } else {
+        passwordInput.type = "password";
+        togglePasswordBtn.textContent = "👁️";
+      }
+    });
+
+    const confirmInput = document.getElementById("confirmPassword");
+    const toggleConfirmBtn = document.getElementById("toggleConfirmPassword");
+    toggleConfirmBtn.addEventListener("click", () => {
+      if (confirmInput.type === "password") {
+        confirmInput.type = "text";
+        toggleConfirmBtn.textContent = "🙈";
+      } else {
+        confirmInput.type = "password";
+        toggleConfirmBtn.textContent = "👁️";
+      }
+    });
+
+    document.getElementById("registerForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      let name = document.getElementById("name").value.trim();
+      let email = document.getElementById("email").value.trim();
+      let phone = document.getElementById("phone").value.trim();
+      let password = passwordInput.value.trim();
+      let confirmPassword = confirmInput.value.trim();
+
+      if (!name || !email || !phone || !password || !confirmPassword) {
+        showToast("❌ All fields are required!", "error");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showToast("❌ Passwords do not match!", "error");
+        return;
+      }
+
+      document.getElementById("loading-spinner").classList.remove("hidden");
+
+      fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, password, confirmPassword }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("loading-spinner").classList.add("hidden");
+        showToast(data.message || data.error, data.message ? "success" : "error");
+      })
+      .catch(error => {
+        document.getElementById("loading-spinner").classList.add("hidden");
+        console.error("Error:", error);
+        showToast("❌ Something went wrong. Please try again.", "error");
+      });
+    });
+  </script>
+
+  <style>
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slideDown { animation: slideDown 0.3s ease; }
+  </style>
+
+</body>
+</html>

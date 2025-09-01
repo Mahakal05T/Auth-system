@@ -13,8 +13,7 @@ from flask import (
 )
 import bcrypt
 import mysql.connector as mysql
-import smtplib
-from email.mime.text import MIMEText
+
 from twilio.rest import Client
 from dotenv import load_dotenv
 from ratelimit import limits, sleep_and_retry

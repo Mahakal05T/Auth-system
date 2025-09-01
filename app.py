@@ -83,18 +83,18 @@ resend.api_key = RESEND_API_KEY
 
 def send_email(to_email, subject, message):
     try:
-        params = {
-            "from": "Your App <noreply@yourdomain.com>",  # Use verified domain or default sandbox
+        email = resend.Emails.send({
+            "from": os.getenv("RESEND_FROM_EMAIL", "Your App <onboarding@resend.dev>"),
             "to": [to_email],
             "subject": subject,
             "html": f"<p>{message}</p>"
-        }
-        email = resend.Emails.send(params)
-        print(f"✅ Email sent to {to_email} | ID: {email['id']}")
+        })
+        logging.info(f"✅ Email sent to {to_email} | ID: {email['id']}")
         return True
     except Exception as e:
-        print(f"❌ Email sending failed: {e}")
+        logging.error(f"❌ Email sending failed: {e}")
         return False
+
 
 def send_sms(to_phone, body):
     sid = os.getenv("TWILIO_SID")

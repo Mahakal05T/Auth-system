@@ -13,7 +13,7 @@ from flask import (
 )
 import bcrypt
 import mysql.connector as mysql
-
+import resend
 from twilio.rest import Client
 from dotenv import load_dotenv
 from ratelimit import limits, sleep_and_retry
@@ -77,27 +77,23 @@ def generate_random_password(length=10):
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 # ---------------- Email / SMS ----------------
-def send_email(to_email, subject, body):
-    email_user = os.getenv("EMAIL_USER")
-    email_pass = os.getenv("EMAIL_PASS")
-    if not email_user or not email_pass:
-        logging.error("EMAIL_USER or EMAIL_PASS not set")
-        return False
+# Get Resend API Key from Railway Variables
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+resend.api_key = RESEND_API_KEY
 
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = email_user
-    msg["To"] = to_email
-
+def send_email(to_email, subject, message):
     try:
-        # Use SSL instead of STARTTLS for better Railway compatibility
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(email_user, email_pass)
-            server.sendmail(email_user, to_email, msg.as_string())
-        logging.info(f"Email sent to {to_email}")
+        params = {
+            "from": "Your App <noreply@yourdomain.com>",  # Use verified domain or default sandbox
+            "to": [to_email],
+            "subject": subject,
+            "html": f"<p>{message}</p>"
+        }
+        email = resend.Emails.send(params)
+        print(f"✅ Email sent to {to_email} | ID: {email['id']}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send email to {to_email}: {e}")
+        print(f"❌ Email sending failed: {e}")
         return False
 
 def send_sms(to_phone, body):

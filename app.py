@@ -440,7 +440,8 @@ def forgot_password():
                 cursor.execute("INSERT INTO reset_links (identifier, token, expiry_time) VALUES (%s, %s, %s)",
                                (identifier, token, expiry_time))
                 conn.commit()
-                reset_url = f"http://127.0.0.1:5000/reset_password?token={token}"
+                BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
+                reset_link = f"{BASE_URL}/reset_password?token={token}"
                 if is_valid_email(identifier):
                     send_reset_link_email(identifier, reset_url)
                 else:

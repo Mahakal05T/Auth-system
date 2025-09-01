@@ -443,9 +443,9 @@ def forgot_password():
                 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
                 reset_link = f"{BASE_URL}/reset_password?token={token}"
                 if is_valid_email(identifier):
-                    send_reset_link_email(identifier, reset_url)
+                    send_reset_link_email(identifier, reset_link)
                 else:
-                    send_reset_link_sms(identifier, reset_url)
+                    send_reset_link_sms(identifier, reset_link)
                 return jsonify({"message": "OTP verified. Reset link sent."}), 200
             return jsonify({"error": "Invalid or expired OTP"}), 400
 

@@ -78,18 +78,18 @@ def generate_random_password(length=10):
 
 # ---------------- Email / SMS ----------------
 # Get Resend API Key from Railway Variables
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-resend.api_key = RESEND_API_KEY
+# Load Resend API Key
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 def send_email(to_email, subject, message):
     try:
-        email = resend.Emails.send({
+        response = resend.Emails.send({
             "from": os.getenv("RESEND_FROM_EMAIL", "Your App <onboarding@resend.dev>"),
             "to": [to_email],
             "subject": subject,
             "html": f"<p>{message}</p>"
         })
-        logging.info(f"✅ Email sent to {to_email} | ID: {email['id']}")
+        logging.info(f"✅ Email sent to {to_email} | ID: {response['id']}")
         return True
     except Exception as e:
         logging.error(f"❌ Email sending failed: {e}")

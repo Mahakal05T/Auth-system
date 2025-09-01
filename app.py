@@ -84,16 +84,17 @@ def send_email(to_email, subject, body):
     if not email_user or not email_pass:
         logging.error("EMAIL_USER or EMAIL_PASS not set")
         return False
+
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = email_user
     msg["To"] = to_email
+
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(email_user, email_pass)
-        server.sendmail(email_user, to_email, msg.as_string())
-        server.quit()
+        # Use SSL instead of STARTTLS for better Railway compatibility
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(email_user, email_pass)
+            server.sendmail(email_user, to_email, msg.as_string())
         logging.info(f"Email sent to {to_email}")
         return True
     except Exception as e:

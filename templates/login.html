@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+.animate-slideDown { animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { transform: translateY(-20px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+<div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+  <h2 class="text-2xl font-bold text-center">Welcome Back</h2>
+  <p class="text-center text-gray-600">Sign in to your account</p>
+
+  <!-- Toggle Buttons -->
+  <div class="flex justify-center gap-4 mb-4">
+    <button id="userBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">User Login</button>
+    <button id="adminBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">Admin Login</button>
+    <button id="hrBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">HR Login</button>
+  </div>
+
+  <!-- User Form -->
+  <form id="userForm" class="flex flex-col gap-3 relative">
+    <input type="text" id="emp_id" placeholder="Employee ID" required
+      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <div class="relative">
+      <input type="password" id="user_password" placeholder="Password" required
+        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button type="button" id="toggleUserPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition">Login</button>
+    <p class="text-center text-sm mt-2">
+      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </p>
+  </form>
+
+  <!-- Admin Form -->
+  <form id="adminForm" class="flex flex-col gap-3 hidden relative">
+    <input type="email" id="admin_email" placeholder="Admin Email" required
+      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <div class="relative">
+      <input type="password" id="admin_password" placeholder="Password" required
+        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button type="button" id="toggleAdminPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+    </div>
+    <button type="submit" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition">Login</button>
+    <p class="text-center text-sm mt-2">
+      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </p>
+  </form>
+
+  <!-- HR Form -->
+  <form id="hrForm" class="flex flex-col gap-3 hidden relative">
+    <input type="email" id="hr_email" placeholder="HR Email" required
+      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <div class="relative">
+      <input type="password" id="hr_password" placeholder="Password" required
+        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button type="button" id="toggleHrPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+    </div>
+    <button type="submit" class="bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 transition">Login</button>
+    <p class="text-center text-sm mt-2">
+      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </p>
+  </form>
+</div>
+
+<!-- Toast and spinner -->
+<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
+  <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+<script>
+const userBtn = document.getElementById("userBtn");
+const adminBtn = document.getElementById("adminBtn");
+const hrBtn = document.getElementById("hrBtn");
+const userForm = document.getElementById("userForm");
+const adminForm = document.getElementById("adminForm");
+const hrForm = document.getElementById("hrForm");
+
+// Toggle forms
+userBtn.addEventListener("click", () => {
+  userForm.classList.remove("hidden");
+  adminForm.classList.add("hidden");
+  hrForm.classList.add("hidden");
+  userBtn.classList.add("bg-blue-600","text-white");
+  userBtn.classList.remove("bg-gray-200","text-gray-800");
+  adminBtn.classList.add("bg-gray-200","text-gray-800");
+  adminBtn.classList.remove("bg-blue-600","text-white");
+  hrBtn.classList.add("bg-gray-200","text-gray-800");
+  hrBtn.classList.remove("bg-purple-600","text-white");
+});
+adminBtn.addEventListener("click", () => {
+  adminForm.classList.remove("hidden");
+  userForm.classList.add("hidden");
+  hrForm.classList.add("hidden");
+  adminBtn.classList.add("bg-blue-600","text-white");
+  adminBtn.classList.remove("bg-gray-200","text-gray-800");
+  userBtn.classList.add("bg-gray-200","text-gray-800");
+  userBtn.classList.remove("bg-blue-600","text-white");
+  hrBtn.classList.add("bg-gray-200","text-gray-800");
+  hrBtn.classList.remove("bg-purple-600","text-white");
+});
+hrBtn.addEventListener("click", () => {
+  hrForm.classList.remove("hidden");
+  userForm.classList.add("hidden");
+  adminForm.classList.add("hidden");
+  hrBtn.classList.add("bg-purple-600","text-white");
+  hrBtn.classList.remove("bg-gray-200","text-gray-800");
+  userBtn.classList.add("bg-gray-200","text-gray-800");
+  userBtn.classList.remove("bg-blue-600","text-white");
+  adminBtn.classList.add("bg-gray-200","text-gray-800");
+  adminBtn.classList.remove("bg-blue-600","text-white");
+});
+
+// Toast
+function showToast(message, type = "success") {
+  const toast = document.createElement("div");
+  toast.className = `px-4 py-2 rounded shadow text-white ${type==='error'?'bg-red-500':'bg-green-500'} animate-slideDown`;
+  toast.textContent = message;
+  document.getElementById("toast-container").appendChild(toast);
+  setTimeout(()=>toast.remove(),4000);
+}
+
+// Eye toggle
+function togglePassword(inputId, toggleId) {
+  const input = document.getElementById(inputId);
+  const toggle = document.getElementById(toggleId);
+  toggle.addEventListener("click", () => {
+    if(input.type==="password"){input.type="text"; toggle.textContent="🙈";}
+    else{input.type="password"; toggle.textContent="👁️";}
+  });
+}
+togglePassword("user_password","toggleUserPassword");
+togglePassword("admin_password","toggleAdminPassword");
+togglePassword("hr_password","toggleHrPassword");
+
+// Handle login with role info
+async function handleLogin(identifier, password, role){
+  if(!identifier || !password){
+    showToast("❌ Enter credentials","error");
+    return;
+  }
+
+  document.getElementById("loading-spinner").classList.remove("hidden");
+  try{
+    const res = await fetch("/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({identifier, password, role})
+    });
+
+    const data = await res.json().catch(()=>({}));
+    document.getElementById("loading-spinner").classList.add("hidden");
+
+    if(res.ok){
+      showToast("✅ "+data.message,"success");
+      setTimeout(()=>{ window.location.href = data.redirect; },1000);
+    } else {
+      showToast(data.error||"❌ Login failed","error");
+    }
+  } catch(err){
+    document.getElementById("loading-spinner").classList.add("hidden");
+    showToast("❌ Something went wrong","error");
+  }
+}
+
+// User form
+userForm.addEventListener("submit", e=>{
+  e.preventDefault();
+  handleLogin(
+    document.getElementById("emp_id").value, 
+    document.getElementById("user_password").value,
+    "user"
+  );
+});
+
+// Admin form
+adminForm.addEventListener("submit", e=>{
+  e.preventDefault();
+  handleLogin(
+    document.getElementById("admin_email").value, 
+    document.getElementById("admin_password").value,
+    "admin"
+  );
+});
+
+// HR form
+hrForm.addEventListener("submit", e=>{
+  e.preventDefault();
+  handleLogin(
+    document.getElementById("hr_email").value, 
+    document.getElementById("hr_password").value,
+    "hr"
+  );
+});
+</script>
+
+</body>
+</html>

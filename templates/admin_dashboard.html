@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-fadeIn { animation: fadeIn 0.3s ease; }
+    .animate-slideUp { animation: slideUp 0.3s ease; }
+    .hidden-section { display: none; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-white shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50 flex flex-col">
+    <div class="p-6 border-b flex justify-between items-center">
+      <h2 class="text-2xl font-bold text-indigo-600">Admin Panel</h2>
+      <button id="closeSidebar" class="md:hidden text-gray-600">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <nav class="flex-1 p-4 space-y-2">
+      <button id="navDashboard" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-semibold">
+        <i data-lucide="home"></i> Dashboard
+      </button>
+      <button id="navUsers" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 text-gray-700 font-medium">
+        <i data-lucide="users"></i> User Management
+      </button>
+      <a href="/logout" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-100 text-red-600 font-medium">
+        <i data-lucide="log-out"></i> Logout
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Overlay for small screens -->
+  <div id="overlay" class="hidden fixed inset-0 bg-black bg-opacity-40 z-40"></div>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6 md:p-10 transition-all duration-300">
+    <button id="openSidebar" class="md:hidden mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+      <i data-lucide="menu"></i> Menu
+    </button>
+
+      <!-- DASHBOARD SECTION -->
+      <section id="dashboardSection" class="animate-fadeIn">
+        <header class="bg-indigo-600 text-white p-6 rounded-lg shadow-md">
+          <h1 class="text-3xl font-semibold">Admin Dashboard</h1>
+          <p class="text-indigo-100">Welcome back, {{ name }}</p>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          <!-- Total Users -->
+          <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Total Users</h3>
+                <h2 class="text-3xl font-bold text-gray-800 mt-1">
+                  {{ total_users }}
+                </h2>
+              </div>
+              <div class="bg-indigo-100 p-3 rounded-lg">
+                <i data-lucide="users" class="text-indigo-600 w-6 h-6"></i>
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-3">All registered users in the system</p>
+          </div>
+
+          <!-- Active Users -->
+          <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Active Users</h3>
+                <h2 class="text-3xl font-bold text-gray-800 mt-1">
+                  {{ active_users }}
+                </h2>
+              </div>
+              <div class="bg-green-100 p-3 rounded-lg">
+                <i data-lucide="activity" class="text-green-600 w-6 h-6"></i>
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-3">Users currently logged in or active</p>
+          </div>
+
+          <!-- Recently Registered -->
+          <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Last Registered User</h3>
+                <h2 class="text-3xl font-bold text-gray-800 mt-1">
+                  {{ last_registered_user.name if last_registered_user else "N/A" }}
+                </h2>
+              </div>
+              <div class="bg-yellow-100 p-3 rounded-lg">
+                <i data-lucide="user-plus" class="text-yellow-600 w-6 h-6"></i>
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-3">
+              Joined on {{ last_registered_user.created_at.strftime('%d %b %Y') if last_registered_user else "—" }}
+            </p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- USER MANAGEMENT SECTION -->
+    <section id="userManagementSection" class="hidden-section animate-slideUp">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-3xl font-bold text-gray-800">User Management</h1>
+          {% if session.get('role') == 'admin' %}
+          <button id="openModalBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+            <i data-lucide="plus"></i> Add User
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <label for="roleFilter" class="font-medium text-gray-700">Filter by Role:</label>
+            <select id="roleFilter" onchange="filterUsers()" class="border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+              <option value="">All</option>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+              <option value="hr">HR</option>
+            </select>
+          </div>
+
+          <div class="relative w-full sm:w-64">
+            <input type="text" id="searchInput" onkeyup="searchUsers()" placeholder="Search user..." class="w-full border-gray-300 rounded-md px-3 py-2 pl-10 focus:ring-2 focus:ring-indigo-400">
+            <i data-lucide="search" class="absolute left-3 top-2.5 text-gray-400 w-5 h-5"></i>
+          </div>
+        </div>
+
+        <!-- User Table -->
+        <div class="overflow-x-auto bg-white shadow-md rounded-xl">
+          <table class="min-w-full text-sm text-left border-collapse">
+            <thead class="bg-indigo-600 text-white">
+              <tr>
+                <th class="px-4 py-3">Emp ID</th>
+                <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Email</th>
+                <th class="px-4 py-3">Phone</th>
+                <th class="px-4 py-3">Role</th>
+                <th class="px-4 py-3">Department</th>
+                {% if session.get('role') == 'admin' %}
+                <th class="px-4 py-3 text-center">Actions</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody id="userTableBody" class="divide-y divide-gray-100">
+              {% for user in users %}
+              <tr data-role="{{ user.role }}" data-department="{{ user.department }}" class="hover:bg-indigo-50 transition">
+                <td class="px-4 py-3 font-medium text-gray-700">{{ user.emp_id }}</td>
+                <td class="px-4 py-3">{{ user.name }}</td>
+                <td class="px-4 py-3">{{ user.email }}</td>
+                <td class="px-4 py-3">{{ user.phone }}</td>
+                <td class="px-4 py-3">
+                  {% if session.get('role') == 'admin' %}
+                  <select onchange="changeRole({{ user.id }}, this.value)" class="border rounded px-2 py-1 focus:ring-2 focus:ring-indigo-400">
+                    <option value="user" {% if user.role=='user' %}selected{% endif %}>User</option>
+                    <option value="admin" {% if user.role=='admin' %}selected{% endif %}>Admin</option>
+                    <option value="hr" {% if user.role=='hr' %}selected{% endif %}>HR</option>
+                  </select>
+                  {% else %}{{ user.role }}{% endif %}
+                </td>
+                <td class="px-4 py-3">{{ user.department }}</td>
+                {% if session.get('role') == 'admin' %}
+                <td class="px-4 py-3 text-center">
+                  <button
+                    class="deleteUserBtn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md"
+                    data-user-id="{{ user.id }}">
+                    Delete
+                  </button>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <!-- Add User Modal -->
+  {% if session.get('role') == 'admin' %}
+  <div id="modalOverlay" class="hidden fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 animate-fadeIn">
+    <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md animate-slideUp">
+      <h3 class="text-xl font-semibold mb-4">Add New User</h3>
+      <form id="addUserForm" class="flex flex-col gap-3">
+        <input type="text" name="name" placeholder="Full Name" required class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+        <input type="email" name="email" placeholder="Email" required class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+        <input type="text" name="phone" placeholder="Phone Number" required class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+        <input type="text" name="department" placeholder="Department" required class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+        <select name="role" required class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-400">
+          <option value="user" selected>User</option>
+          <option value="admin">Admin</option>
+          <option value="hr">HR</option>
+        </select>
+        <div class="flex justify-end gap-2 mt-4">
+          <button type="button" id="closeModalBtn" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">Cancel</button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Add</button>
+        </div>
+      </form>
+      <p id="responseMessage" class="text-sm mt-2 text-center"></p>
+    </div>
+  </div>
+  {% endif %}
+  </main>
+
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  lucide.createIcons();
+
+  // Sidebar toggle
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+  const openSidebar = document.getElementById("openSidebar");
+  const closeSidebar = document.getElementById("closeSidebar");
+
+  openSidebar.addEventListener("click", () => {
+    sidebar.classList.remove("-translate-x-full");
+    overlay.classList.remove("hidden");
+  });
+  closeSidebar.addEventListener("click", () => {
+    sidebar.classList.add("-translate-x-full");
+    overlay.classList.add("hidden");
+  });
+  overlay.addEventListener("click", () => {
+    sidebar.classList.add("-translate-x-full");
+    overlay.classList.add("hidden");
+  });
+
+  // Section switching
+  const dashboardSection = document.getElementById("dashboardSection");
+  const userManagementSection = document.getElementById("userManagementSection");
+  const navDashboard = document.getElementById("navDashboard");
+  const navUsers = document.getElementById("navUsers");
+  const gotoUsers = document.getElementById("gotoUsers");
+
+  function showDashboard() {
+    dashboardSection.classList.remove("hidden-section");
+    userManagementSection.classList.add("hidden-section");
+    navDashboard.classList.add("bg-indigo-100", "text-indigo-700", "font-semibold");
+    navUsers.classList.remove("bg-indigo-100", "text-indigo-700", "font-semibold");
+  }
+
+  function showUsers() {
+    dashboardSection.classList.add("hidden-section");
+    userManagementSection.classList.remove("hidden-section");
+    navUsers.classList.add("bg-indigo-100", "text-indigo-700", "font-semibold");
+    navDashboard.classList.remove("bg-indigo-100", "text-indigo-700", "font-semibold");
+  }
+
+  if (navDashboard) navDashboard.onclick = showDashboard;
+  if (navUsers) navUsers.onclick = showUsers;
+  if (gotoUsers) gotoUsers.onclick = showUsers;
+
+  // Filter / Search
+  window.searchUsers = function () {
+    const searchValue = document.getElementById("searchInput").value.toLowerCase();
+    document.querySelectorAll("#userTableBody tr").forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(searchValue) ? "" : "none";
+    });
+  };
+
+  window.filterUsers = function () {
+    const selectedRole = document.getElementById("roleFilter").value;
+    document.querySelectorAll("#userTableBody tr").forEach(row => {
+      const role = row.getAttribute("data-role");
+      row.style.display = selectedRole === "" || role === selectedRole ? "" : "none";
+    });
+  };
+
+  // Modal control (only for admin)
+  const modal = document.getElementById("modalOverlay");
+  const openModalBtn = document.getElementById("openModalBtn");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+  if (openModalBtn && modal) {
+    openModalBtn.onclick = () => modal.classList.remove("hidden");
+  }
+  if (closeModalBtn && modal) {
+    closeModalBtn.onclick = () => modal.classList.add("hidden");
+  }
+  window.onclick = (e) => { if (e.target === modal) modal.classList.add("hidden"); };
+
+  // ADD USER FORM
+  const addUserForm = document.getElementById("addUserForm");
+  const responseMessage = document.getElementById("responseMessage");
+
+  if (addUserForm) {
+    addUserForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const name = addUserForm.querySelector("[name='name']").value.trim();
+      const email = addUserForm.querySelector("[name='email']").value.trim();
+      const phone = addUserForm.querySelector("[name='phone']").value.trim();
+
+      if (!name || !email || !phone) {
+        responseMessage.textContent = "⚠️ Please fill all fields";
+        responseMessage.className = "text-red-600 mt-2";
+        return;
+      }
+
+      try {
+        const response = await fetch("/admin/add_user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, phone })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          responseMessage.textContent = "✅ " + result.message;
+          responseMessage.className = "text-green-600 mt-2";
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          responseMessage.textContent = "❌ " + (result.error || "Failed to add user");
+          responseMessage.className = "text-red-600 mt-2";
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        responseMessage.textContent = "❌ Something went wrong!";
+        responseMessage.className = "text-red-600 mt-2";
+      }
+    });
+  }
+
+  // DELETE USER BUTTONS
+  document.querySelectorAll(".deleteUserBtn").forEach(button => {
+    button.addEventListener("click", async () => {
+      const userId = button.getAttribute("data-user-id");
+      if (!userId) return;
+
+      if (!confirm("Are you sure you want to delete this user?")) return;
+
+      try {
+        const response = await fetch(`/admin/delete_user/${userId}`, {
+          method: "DELETE"
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+          alert(result.message || "User deleted successfully.");
+          button.closest("tr").remove();
+        } else {
+          alert(result.error || "Failed to delete user.");
+        }
+      } catch (err) {
+        console.error("Error deleting user:", err);
+        alert("Error deleting user. Please try again.");
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!-- templates/hr_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HR Dashboard - {{ department }} Department</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+
+<!-- Sidebar -->
+<aside class="w-64 bg-white shadow p-5">
+    <h1 class="text-2xl font-bold mb-6">HR Dashboard</h1>
+    <nav class="flex flex-col gap-2">
+        <a href="#" class="text-gray-700 hover:text-blue-600">Home</a>
+        <a href="#" class="text-gray-700 hover:text-blue-600">Employees</a>
+        <a href="#" class="text-gray-700 hover:text-blue-600">Departments</a>
+        <a href="{{ url_for('logout') }}" class="text-red-600 hover:underline">Logout</a>
+    </nav>
+</aside>
+
+<!-- Main Content -->
+<main class="flex-1 p-6">
+    <h2 class="text-2xl font-semibold mb-4">Employees - {{ department }} Department</h2>
+
+    {% if employees %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white shadow rounded-lg">
+            <thead>
+                <tr class="bg-gray-200 text-gray-700">
+                    <th class="py-2 px-4">Employee ID</th>
+                    <th class="py-2 px-4">Name</th>
+                    <th class="py-2 px-4">Email</th>
+                    <th class="py-2 px-4">Phone</th>
+                    <th class="py-2 px-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 px-4">{{ emp.emp_id }}</td>
+                    <td class="py-2 px-4">{{ emp.name }}</td>
+                    <td class="py-2 px-4">{{ emp.email }}</td>
+                    <td class="py-2 px-4">{{ emp.phone }}</td>
+                    <td class="py-2 px-4">
+                        <a href="#" class="text-blue-600 hover:underline">Edit</a>
+                        <a href="#" class="text-red-600 hover:underline ml-2">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p class="text-gray-600 mt-4">No employees found in your department.</p>
+    {% endif %}
+</main>
+
+</body>
+</html>

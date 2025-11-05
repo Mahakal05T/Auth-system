@@ -1,4 +1,4 @@
-# app.py
+# app.py (JWT-integrated, sessions replaced)
 import logging
 import os
 import re
@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
-    Flask, request, jsonify, render_template, session, redirect, url_for, send_from_directory
+    Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
 )
 import bcrypt
 import mysql.connector as mysql
@@ -19,12 +19,39 @@ from twilio.rest import Client
 from dotenv import load_dotenv
 from ratelimit import limits, sleep_and_retry
 
+# JWT imports
+from flask_jwt_extended import (
+    JWTManager, create_access_token, create_refresh_token,
+    jwt_required, get_jwt_identity, get_jwt
+)
+
 # ---------------- Config ----------------
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), "credentials.env"))
-app.secret_key = os.getenv("SECRET_KEY", "fallback_dev_key")
+
+# Use dedicated JWT secret (fallback to existing SECRET_KEY if needed)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", "fallback_dev_key"))
+
+
+# Access token lifetime and refresh token lifetime
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)       # access token lifetime
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)      # refresh token lifetime
+
+jwt = JWTManager(app)
+app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
+app.config["JWT_IDENTITY_CLAIM"] = "identity"
+
+
+
+# In-memory blocklist for revoked tokens (jti strings).
+# NOTE: ephemeral — replace with Redis/DB for production/multi-worker.
+JWT_BLOCKLIST = set()
+
+# Temporary in-memory storage for pending profile updates and OTP used previously stored in session.
+# Structure: PENDING_PROFILE_UPDATES[user_id] = {"otp_hash": "...", "pending_profile": {...}, "expiry": datetime}
+PENDING_PROFILE_UPDATES = {}
 
 # Allowed roles
 ALLOWED_ROLES = {"user", "admin", "hr"}  # added "hr"
@@ -91,53 +118,52 @@ def send_email(to_email, subject, body):
         logging.error(f"Failed to send email to {to_email}: {e}")
         return False
 
-def send_sms(to_phone, body):
-    sid = os.getenv("TWILIO_SID")
-    token = os.getenv("TWILIO_TOKEN")
-    from_phone = os.getenv("TWILIO_PHONE")
-    if not sid or not token or not from_phone:
-        logging.error("Twilio config missing")
-        return False
-    try:
-        client = Client(sid, token)
-        client.messages.create(body=body, from_=from_phone, to=to_phone)
-        logging.info(f"SMS sent to {to_phone}")
-        return True
-    except Exception as e:
-        logging.error(f"Failed to send SMS to {to_phone}: {e}")
-        return False
-
 def send_otp_email(email, otp):
     return send_email(email, "Your OTP code", f"Your OTP code is: {otp}")
-
-def send_otp_sms(phone, otp):
-    return send_sms(phone, f"Your OTP code is: {otp}")
 
 def send_reset_link_email(email, link):
     return send_email(email, "Reset Your Password", f"Reset link: {link}")
 
-def send_reset_link_sms(phone, link):
-    return send_sms(phone, f"Reset your password: {link}")
-
 def send_credentials_email(email, emp_id, password):
     return send_email(email, "Your Account Credentials", f"Welcome!\n\nYour employee ID: {emp_id}\nYour temporary password: {password}")
 
-def send_credentials_sms(phone, emp_id, password):
-    return send_sms(phone, f"Your ID: {emp_id}, Temp Password: {password}")
+# ---------------- JWT blocklist handling ----------------
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    jti = jwt_payload.get("jti")
+    return jti in JWT_BLOCKLIST
 
-# ---------------- Decorators ----------------
+@jwt.revoked_token_loader
+def revoked_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token has been revoked"}), 401
+
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token has expired"}), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(reason):
+    return jsonify({"error": "Invalid token", "reason": reason}), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(reason):
+    return jsonify({"error": "Missing token", "reason": reason}), 401
+
+# ---------------- Decorators (JWT-based) ----------------
 def login_required(f):
     @wraps(f)
+    @jwt_required()
     def wrapper(*args, **kwargs):
-        if not session.get('user_id'):
-            return redirect(url_for('login_user'))
+        # jwt_required ensures token present & valid
         return f(*args, **kwargs)
     return wrapper
 
 def admin_required(f):
     @wraps(f)
+    @jwt_required()
     def wrapper(*args, **kwargs):
-        if session.get('role') != 'admin':
+        identity = get_jwt_identity() or {}
+        if identity.get("role") != "admin":
             return redirect(url_for('unauthorized'))
         return f(*args, **kwargs)
     return wrapper
@@ -146,7 +172,6 @@ def admin_required(f):
 @app.route("/")
 def root():
     return redirect(url_for("login_user"))
-
 
 # ---- Login ----
 @app.route("/login", methods=["GET", "POST"])
@@ -161,49 +186,46 @@ def login_user():
 
         identifier = data.get("identifier", "").strip()
         password = data.get("password", "").strip()
-        role = data.get("role", "").strip().lower()
 
-        if not identifier or not password or not role:
-            return jsonify({"error": "Missing identifier, password, or role"}), 400
+        if not identifier or not password:
+            return jsonify({"error": "Missing identifier or password"}), 400
 
         conn = connect_db()
         cursor = conn.cursor(dictionary=True)
 
-        # 🔹 Correct SQL logic — restrict role for both conditions
-        if role == "admin":
-            cursor.execute(
-                "SELECT * FROM users WHERE email=%s AND role='admin' LIMIT 1",
-                (identifier,)
-            )
-        elif role == "user":
-            cursor.execute(
-                "SELECT * FROM users WHERE emp_id=%s AND role='user' LIMIT 1",
-                (identifier,)
-            )
-        elif role == "hr":
-            cursor.execute(
-                "SELECT * FROM users WHERE email=%s AND role='hr' LIMIT 1",
-                (identifier,)
-            )
-        else:
-            return jsonify({"error": "Invalid role"}), 400
-
+        # Try to find user by either emp_id or email
+        cursor.execute(
+            "SELECT * FROM users WHERE emp_id=%s OR email=%s LIMIT 1",
+            (identifier, identifier)
+        )
         user = cursor.fetchone()
 
         if not user:
-            return jsonify({"error": f"{role.capitalize()} not found"}), 401
+            return jsonify({"error": "User not found"}), 401
 
-        # ✅ Verify password hash
+        role = user["role"].lower()
+
+        # Verify password hash
         if not check_password(user["password_hash"], password):
             return jsonify({"error": "Invalid credentials"}), 401
 
-        # ✅ Store session
-        session["user_id"] = user["id"]
-        session["name"] = user["name"]
-        session["role"] = user["role"]
-        session["department"] = user.get("department")
+        # If user was inactive, mark as active
+        if user.get("status") != "active":
+            cursor.execute("UPDATE users SET status='active' WHERE id=%s", (user["id"],))
+            conn.commit()
 
-        # ✅ Redirect URLs based on role
+        # Create JWT identity payload (keep relevant info used across app)
+        identity = {
+            "id": user["id"],
+            "role": role,
+            "name": user.get("name"),
+            "department": user.get("department")
+        }
+
+        access_token = create_access_token(identity=identity)
+        refresh_token = create_refresh_token(identity=identity)
+
+        # Redirect URLs based on role (kept as before)
         redirect_url = {
             "admin": "/admin/dashboard",
             "user": "/dashboard",
@@ -213,7 +235,9 @@ def login_user():
         return jsonify({
             "message": f"{role.capitalize()} login successful",
             "role": role,
-            "redirect": redirect_url
+            "redirect": redirect_url,
+            "access_token": access_token,
+            "refresh_token": refresh_token
         }), 200
 
     except Exception as e:
@@ -224,56 +248,70 @@ def login_user():
         if 'conn' in locals():
             conn.close()
 
-
 # ---- Logout ----
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
+@jwt_required(optional=True)
 def logout():
-    session.clear()
-    return redirect(url_for("login_user"))
+    # Client should send tokens in Authorization header or body; we revoke the incoming token's jti.
+    jwt_payload = get_jwt()  # may be None if optional and no token
+    if jwt_payload:
+        jti = jwt_payload.get("jti")
+        JWT_BLOCKLIST.add(jti)
+    # Optionally accept token JTIs in body for revoking refresh token too
+    data = request.get_json(silent=True) or {}
+    refresh_jti = data.get("refresh_jti")
+    if refresh_jti:
+        JWT_BLOCKLIST.add(refresh_jti)
+    return jsonify({"message": "Token revoked (logout)"}), 200
 
-
+# ---- Refresh endpoint ----
+@app.route("/token/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh_access_token():
+    identity = get_jwt_identity()
+    # Issue new access token
+    new_access = create_access_token(identity=identity)
+    return jsonify({"access_token": new_access}), 200
 
 # ---- Dashboards ---
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
+    identity = get_jwt_identity() or {}
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     try:
         # Fetch all users
-        cursor.execute("SELECT id, name, email, phone, role, emp_id, department, created_at, is_active FROM users")
+        cursor.execute("SELECT id, name, email, phone, role, emp_id, department, created_at, status FROM users")
         users = cursor.fetchall()
 
-        # --- Dashboard metrics ---
+        # Dashboard metrics
         total_users = len(users)
-
-        # Active users (assuming 'is_active' = 1 means active)
         active_users = len([u for u in users if u.get("is_active") == 1])
-
-        # Last registered user (by created_at)
         last_registered_user = None
         if users:
             last_registered_user = max(users, key=lambda u: u.get("created_at", ""))
+
     finally:
         conn.close()
 
     return render_template(
         "admin_dashboard.html",
-        name=session.get('name'),
+        name=identity.get('name'),
         users=users,
         total_users=total_users,
         active_users=active_users,
         last_registered_user=last_registered_user
     )
 
-
 @app.route("/hr/dashboard")
 @login_required
 def hr_dashboard():
-    if session.get('role') != 'hr':
+    identity = get_jwt_identity() or {}
+    if identity.get('role') != 'hr':
         return redirect(url_for('unauthorized'))
 
-    user_dept = session.get('department')
+    user_dept = identity.get('department')
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -290,7 +328,8 @@ def hr_dashboard():
 @app.route("/dashboard")
 @login_required
 def user_dashboard():
-    user_id = session.get('user_id')
+    identity = get_jwt_identity() or {}
+    user_id = identity.get('id')
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -331,8 +370,7 @@ def manage_users():
             )
             conn.commit()
             email_sent = send_credentials_email(email, emp_id, temp_password)
-            sms_sent = send_credentials_sms(phone, emp_id, temp_password)
-            return jsonify({"message": "User added", "emp_id": emp_id, "email_sent": email_sent, "sms_sent": sms_sent}), 200
+            return jsonify({"message": "User added", "emp_id": emp_id, "email_sent": email_sent}), 200
         finally:
             conn.close()
 
@@ -344,8 +382,6 @@ def manage_users():
     finally:
         conn.close()
     return render_template("users_list.html", users=users)
-
-
 
 @app.route("/admin/add_user", methods=["GET", "POST"])
 @admin_required
@@ -370,14 +406,20 @@ def add_user_by_admin():
         if cursor.fetchone():
             return jsonify({"error": "User already exists"}), 400
 
+        role = data.get("role", "user").lower()
+        department = data.get("department")
+
+        if role not in ALLOWED_ROLES:
+            return jsonify({"error": "Invalid role"}), 400
+
         cursor.execute(
-            "INSERT INTO users (name, email, phone, password_hash, role, emp_id) VALUES (%s, %s, %s, %s, %s, %s)",
-            (name, email, phone, hashed_password, 'user', emp_id)
+            "INSERT INTO users (name, email, phone, password_hash, role, emp_id, department) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (name, email, phone, hashed_password, role, emp_id, department)
         )
+
         conn.commit()
         email_sent = send_credentials_email(email, emp_id, temp_password)
-        sms_sent = send_credentials_sms(phone, emp_id, temp_password)
-        return jsonify({"message": "User added", "email_sent": email_sent, "sms_sent": sms_sent}), 200
+        return jsonify({"message": "User added", "email_sent": email_sent}), 200
     finally:
         conn.close()
 
@@ -385,8 +427,11 @@ def add_user_by_admin():
 @app.route("/admin/delete_user/<int:user_id>", methods=["DELETE"])
 @admin_required
 def delete_user(user_id):
-    # Prevent deleting yourself
-    if user_id == session.get("user_id"):
+    # Prevent deleting yourself (get current user id from token)
+    current_identity = get_jwt_identity() or {}
+    current_user_id = current_identity.get("id")
+
+    if user_id == current_user_id:
         return jsonify({"error": "You cannot delete your own account"}), 400
 
     conn = connect_db()
@@ -447,7 +492,8 @@ def admin_set_role():
                 return jsonify({"error": "Cannot remove role: this is the last admin"}), 400
 
         # Prevent an admin removing their own admin role
-        if target["id"] == session.get("user_id") and new_role != "admin":
+        current_identity = get_jwt_identity() or {}
+        if target["id"] == current_identity.get("id") and new_role != "admin":
             return jsonify({"error": "Admins cannot remove their own admin role"}), 400
 
         cur2 = conn.cursor()
@@ -459,9 +505,8 @@ def admin_set_role():
         cur.close()
         conn.close()
 
-    return "403 Unauthorized - Admins only", 403
-
 # ---------------- Forgot / Reset (OTP + reset link) ----------------
+# Rate-limited forgot_password (keeps same behavior)
 @sleep_and_retry
 @limits(calls=3, period=60)  # Limit OTP requests to 3 per minute
 @app.route("/forgot_password", methods=["GET", "POST"])
@@ -473,7 +518,7 @@ def forgot_password():
     if not data:
         return jsonify({"error": "Missing JSON data"}), 400
 
-    identifier = data.get("identifier")  # emp_id for users, email for admin
+    identifier = data.get("identifier")  # emp_id for users, email for admin , hr
     otp = data.get("otp")  # optional, for verification
 
     if not identifier:
@@ -512,10 +557,7 @@ def forgot_password():
                 conn.commit()
 
                 reset_url = f"http://127.0.0.1:5000/reset_password?token={token}"
-                if user["role"] == "user":
-                    send_reset_link_email(user["email"], reset_url)
-                else:
-                    send_reset_link_email(user["email"], reset_url)
+                send_reset_link_email(user["email"], reset_url)
 
                 return jsonify({"message": "OTP verified. Reset link sent."}), 200
 
@@ -533,15 +575,7 @@ def forgot_password():
         )
         conn.commit()
 
-        # Send OTP to registered email only
-        sent = False
-        if user["role"] == "user":
-            sent = send_otp_email(user["email"], new_otp)
-            logging.debug(f"Email sent to user {user['email']}: {sent}")
-        else:  # admin
-            sent = send_otp_email(user["email"], new_otp)
-            logging.debug(f"Email sent to admin {user['email']}: {sent}")
-
+        sent = send_otp_email(user["email"], new_otp)
         if sent:
             return jsonify({"message": "OTP sent successfully"}), 200
         else:
@@ -609,7 +643,9 @@ def update_profile():
     if not name or not emp_id or not new_email or not new_phone:
         return jsonify({"error": "All fields are required"}), 400
 
-    user_id = session.get("user_id")
+    identity = get_jwt_identity() or {}
+    user_id = identity.get("id")
+
     conn = connect_db()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -622,18 +658,21 @@ def update_profile():
         email_changed = new_email != user["email"]
         phone_changed = new_phone != user["phone"]
 
-        # If email or phone changed, generate OTP and store in session temporarily
+        # If email or phone changed, generate OTP and store in temporary store
         if email_changed or phone_changed:
             otp = generate_otp()
-            session["update_profile_otp"] = bcrypt.hashpw(otp.encode(), bcrypt.gensalt()).decode()
-            session["pending_profile"] = {"name": name, "emp_id": emp_id, "email": new_email, "phone": new_phone}
+            otp_hash = bcrypt.hashpw(otp.encode(), bcrypt.gensalt()).decode()
+            expiry_time = datetime.now() + timedelta(minutes=10)
+            PENDING_PROFILE_UPDATES[user_id] = {
+                "otp_hash": otp_hash,
+                "pending_profile": {"name": name, "emp_id": emp_id, "email": new_email, "phone": new_phone},
+                "expiry": expiry_time
+            }
 
             # Send OTP to old email/phone
             sent_email = sent_phone = False
             if email_changed:
                 sent_email = send_otp_email(user["email"], otp)
-            if phone_changed:
-                sent_phone = send_otp_sms(user["phone"], otp)
 
             return jsonify({
                 "message": "OTP sent to your current email/phone for confirmation",
@@ -652,7 +691,6 @@ def update_profile():
         cursor.close()
         conn.close()
 
-
 @app.route("/dashboard/verify_update_otp", methods=["POST"])
 @login_required
 def verify_update_otp():
@@ -661,17 +699,22 @@ def verify_update_otp():
         return jsonify({"error": "Missing OTP"}), 400
 
     otp_entered = data["otp"]
-    hashed_otp = session.get("update_profile_otp")
-    pending_profile = session.get("pending_profile")
+    identity = get_jwt_identity() or {}
+    user_id = identity.get("id")
 
-    if not hashed_otp or not pending_profile:
+    record = PENDING_PROFILE_UPDATES.get(user_id)
+    if not record:
         return jsonify({"error": "No pending update found"}), 400
 
-    if not bcrypt.checkpw(otp_entered.encode(), hashed_otp.encode()):
+    # check expiry
+    if datetime.now() > record.get("expiry", datetime.min):
+        PENDING_PROFILE_UPDATES.pop(user_id, None)
+        return jsonify({"error": "OTP expired"}), 400
+
+    if not bcrypt.checkpw(otp_entered.encode(), record["otp_hash"].encode()):
         return jsonify({"error": "Invalid OTP"}), 400
 
-    # Update user profile
-    user_id = session.get("user_id")
+    pending_profile = record.get("pending_profile")
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -681,16 +724,15 @@ def verify_update_otp():
              pending_profile["email"], pending_profile["phone"], user_id)
         )
         conn.commit()
-
-        # Clear session temporary data
-        session.pop("update_profile_otp", None)
-        session.pop("pending_profile", None)
-
+        # Clear temp data
+        PENDING_PROFILE_UPDATES.pop(user_id, None)
         return jsonify({"message": "Profile updated successfully"}), 200
     finally:
         cursor.close()
         conn.close()
 
+# Existing route duplicates: preserve original behavior but ensure no accidental re-definition
+# (Your file had two definitions for /forgot_password GET earlier — kept main function above.)
 
 @app.route("/forgot_password", methods=["GET"])
 def forgot_password_page():

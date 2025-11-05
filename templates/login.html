@@ -10,115 +10,70 @@
 @keyframes slideDown { from { transform: translateY(-20px); opacity:0 } to { transform: translateY(0); opacity:1 } }
 </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-<div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
-  <h2 class="text-2xl font-bold text-center">Welcome Back</h2>
-  <p class="text-center text-gray-600">Sign in to your account</p>
+<body class="bg-gradient-to-br from-purple-700 via-indigo-700 to-blue-700 min-h-screen flex items-center justify-center p-4">
 
-  <!-- Toggle Buttons -->
-  <div class="flex justify-center gap-4 mb-4">
-    <button id="userBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">User Login</button>
-    <button id="adminBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">Admin Login</button>
-    <button id="hrBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">HR Login</button>
+<!-- Login Card -->
+<div class="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl w-full max-w-md p-8 text-white space-y-6">
+
+  <!-- Title -->
+  <div class="text-center">
+    <h2 class="text-3xl font-bold">Welcome Back</h2>
+    <p class="text-gray-300 mt-1">Sign in to your account</p>
   </div>
 
-  <!-- User Form -->
-  <form id="userForm" class="flex flex-col gap-3 relative">
-    <input type="text" id="emp_id" placeholder="Employee ID" required
-      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-    <div class="relative">
-      <input type="password" id="user_password" placeholder="Password" required
-        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-      <button type="button" id="toggleUserPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
-    </div>
-    <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition">Login</button>
-    <p class="text-center text-sm mt-2">
-      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
-    </p>
-  </form>
+  <!-- Single Login Form -->
+  <form id="loginForm" class="flex flex-col gap-4 relative animate-slideDown">
+    <input type="text" id="identifier" placeholder="Employee ID or Email" required
+      class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
 
-  <!-- Admin Form -->
-  <form id="adminForm" class="flex flex-col gap-3 hidden relative">
-    <input type="email" id="admin_email" placeholder="Admin Email" required
-      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
     <div class="relative">
-      <input type="password" id="admin_password" placeholder="Password" required
-        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-      <button type="button" id="toggleAdminPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+      <input type="password" id="password" placeholder="Password" required
+        class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+      <button type="button" id="togglePassword" class="absolute right-3 top-2 text-gray-300 hover:text-white text-lg">👁️</button>
     </div>
-    <button type="submit" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition">Login</button>
-    <p class="text-center text-sm mt-2">
-      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
-    </p>
-  </form>
 
-  <!-- HR Form -->
-  <form id="hrForm" class="flex flex-col gap-3 hidden relative">
-    <input type="email" id="hr_email" placeholder="HR Email" required
-      class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-    <div class="relative">
-      <input type="password" id="hr_password" placeholder="Password" required
-        class="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-      <button type="button" id="toggleHrPassword" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">👁️</button>
+    <div class="flex items-center justify-between text-sm">
+      <label class="flex items-center gap-2 text-gray-300">
+        <input type="checkbox" class="accent-cyan-400"> Remember me
+      </label>
+      <a href="{{ url_for('forgot_password') }}" class="text-cyan-300 hover:underline">Forgot password?</a>
     </div>
-    <button type="submit" class="bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 transition">Login</button>
-    <p class="text-center text-sm mt-2">
-      <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
+
+    <button type="submit"
+      class="bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-semibold py-2 rounded-lg hover:from-cyan-500 hover:to-blue-600 shadow-lg transition">Login</button>
+
+    <div class="flex items-center gap-2 text-sm text-gray-400 mt-2">
+      <div class="flex-1 border-t border-gray-500"></div>
+      <span>or continue with</span>
+      <div class="flex-1 border-t border-gray-500"></div>
+    </div>
+
+    <div class="flex justify-center gap-3">
+      <button type="button" class="w-1/2 bg-white/10 hover:bg-white/20 text-gray-200 font-medium rounded-lg py-2 flex items-center justify-center gap-2">
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5"> Google
+      </button>
+      <button type="button" class="w-1/2 bg-white/10 hover:bg-white/20 text-gray-200 font-medium rounded-lg py-2 flex items-center justify-center gap-2">
+        <img src="https://www.svgrepo.com/show/349375/github.svg" alt="GitHub" class="w-5 h-5 invert"> GitHub
+      </button>
+    </div>
+
+    <p class="text-center text-sm text-gray-300">
+      Don’t have an account?
+      <a href="#" class="text-cyan-400 hover:underline font-medium">Sign up</a>
     </p>
   </form>
 </div>
 
-<!-- Toast and spinner -->
+<!-- Toast + Spinner -->
 <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
 <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
-  <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
 </div>
 
+<!-- ✅ JavaScript -->
 <script>
-const userBtn = document.getElementById("userBtn");
-const adminBtn = document.getElementById("adminBtn");
-const hrBtn = document.getElementById("hrBtn");
-const userForm = document.getElementById("userForm");
-const adminForm = document.getElementById("adminForm");
-const hrForm = document.getElementById("hrForm");
-
-// Toggle forms
-userBtn.addEventListener("click", () => {
-  userForm.classList.remove("hidden");
-  adminForm.classList.add("hidden");
-  hrForm.classList.add("hidden");
-  userBtn.classList.add("bg-blue-600","text-white");
-  userBtn.classList.remove("bg-gray-200","text-gray-800");
-  adminBtn.classList.add("bg-gray-200","text-gray-800");
-  adminBtn.classList.remove("bg-blue-600","text-white");
-  hrBtn.classList.add("bg-gray-200","text-gray-800");
-  hrBtn.classList.remove("bg-purple-600","text-white");
-});
-adminBtn.addEventListener("click", () => {
-  adminForm.classList.remove("hidden");
-  userForm.classList.add("hidden");
-  hrForm.classList.add("hidden");
-  adminBtn.classList.add("bg-blue-600","text-white");
-  adminBtn.classList.remove("bg-gray-200","text-gray-800");
-  userBtn.classList.add("bg-gray-200","text-gray-800");
-  userBtn.classList.remove("bg-blue-600","text-white");
-  hrBtn.classList.add("bg-gray-200","text-gray-800");
-  hrBtn.classList.remove("bg-purple-600","text-white");
-});
-hrBtn.addEventListener("click", () => {
-  hrForm.classList.remove("hidden");
-  userForm.classList.add("hidden");
-  adminForm.classList.add("hidden");
-  hrBtn.classList.add("bg-purple-600","text-white");
-  hrBtn.classList.remove("bg-gray-200","text-gray-800");
-  userBtn.classList.add("bg-gray-200","text-gray-800");
-  userBtn.classList.remove("bg-blue-600","text-white");
-  adminBtn.classList.add("bg-gray-200","text-gray-800");
-  adminBtn.classList.remove("bg-blue-600","text-white");
-});
-
-// Toast
+// Toast Notification
 function showToast(message, type = "success") {
   const toast = document.createElement("div");
   toast.className = `px-4 py-2 rounded shadow text-white ${type==='error'?'bg-red-500':'bg-green-500'} animate-slideDown`;
@@ -127,21 +82,26 @@ function showToast(message, type = "success") {
   setTimeout(()=>toast.remove(),4000);
 }
 
-// Eye toggle
-function togglePassword(inputId, toggleId) {
-  const input = document.getElementById(inputId);
-  const toggle = document.getElementById(toggleId);
-  toggle.addEventListener("click", () => {
-    if(input.type==="password"){input.type="text"; toggle.textContent="🙈";}
-    else{input.type="password"; toggle.textContent="👁️";}
-  });
-}
-togglePassword("user_password","toggleUserPassword");
-togglePassword("admin_password","toggleAdminPassword");
-togglePassword("hr_password","toggleHrPassword");
+// Password toggle
+const togglePassword = document.getElementById("togglePassword");
+const passwordInput = document.getElementById("password");
+togglePassword.addEventListener("click", () => {
+  if(passwordInput.type==="password"){
+    passwordInput.type="text"; togglePassword.textContent="🙈";
+  } else {
+    passwordInput.type="password"; togglePassword.textContent="👁️";
+  }
+});
 
-// Handle login with role info
-async function handleLogin(identifier, password, role){
+
+// 🔐 Helper: set cookie
+function setCookie(name, value, minutes) {
+  const expires = new Date(Date.now() + minutes * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; Secure; SameSite=Strict`;
+}
+
+// Login Handler (Unified)
+async function handleLogin(identifier, password){
   if(!identifier || !password){
     showToast("❌ Enter credentials","error");
     return;
@@ -152,7 +112,7 @@ async function handleLogin(identifier, password, role){
     const res = await fetch("/login", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({identifier, password, role})
+      body:JSON.stringify({identifier, password})
     });
 
     const data = await res.json().catch(()=>({}));
@@ -160,6 +120,10 @@ async function handleLogin(identifier, password, role){
 
     if(res.ok){
       showToast("✅ "+data.message,"success");
+      // ✅ Store JWT tokens in cookies (so Flask can verify automatically)
+      if (data.access_token) setCookie("access_token_cookie", data.access_token, 60); // 60 min
+      if (data.refresh_token) setCookie("refresh_token_cookie", data.refresh_token, 7*24*60); // 7 days
+
       setTimeout(()=>{ window.location.href = data.redirect; },1000);
     } else {
       showToast(data.error||"❌ Login failed","error");
@@ -170,33 +134,12 @@ async function handleLogin(identifier, password, role){
   }
 }
 
-// User form
-userForm.addEventListener("submit", e=>{
+// Form Submit
+document.getElementById("loginForm").addEventListener("submit", e=>{
   e.preventDefault();
   handleLogin(
-    document.getElementById("emp_id").value, 
-    document.getElementById("user_password").value,
-    "user"
-  );
-});
-
-// Admin form
-adminForm.addEventListener("submit", e=>{
-  e.preventDefault();
-  handleLogin(
-    document.getElementById("admin_email").value, 
-    document.getElementById("admin_password").value,
-    "admin"
-  );
-});
-
-// HR form
-hrForm.addEventListener("submit", e=>{
-  e.preventDefault();
-  handleLogin(
-    document.getElementById("hr_email").value, 
-    document.getElementById("hr_password").value,
-    "hr"
+    document.getElementById("identifier").value,
+    document.getElementById("password").value
   );
 });
 </script>

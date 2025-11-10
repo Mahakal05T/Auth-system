@@ -60,11 +60,6 @@
                 <div class="text-xs text-gray-500">{{ user.role | capitalize }}</div>
               </div>
             </div>
-
-            <a href="/logout" class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm bg-white border hover:shadow-sm">
-              <i data-lucide="log-out" class="w-4 h-4 text-gray-600"></i>
-              <span class="text-gray-700">Logout</span>
-            </a>
           </div>
         </div>
       </div>
@@ -123,7 +118,10 @@
 
           <div class="mt-6 flex gap-3">
             <button id="editProfileBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Edit Profile</button>
-            <a href="/logout" class="flex-1 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-center hover:shadow-sm">Logout</a>
+            <a href="#" id="logoutLink" class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm bg-white border hover:shadow-sm">
+              <i data-lucide="log-out" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-gray-700">Logout</span>
+            </a>
           </div>
         </div>
 
@@ -392,6 +390,47 @@
           }
         });
       }
+
+      // Logout handler
+const logoutLink = document.getElementById('logoutLink');
+
+const handleLogout = async (e) => {
+  e.preventDefault();
+
+  const accessToken = localStorage.getItem('access_token');
+
+  try {
+    // Call the backend logout endpoint
+    await fetch('/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+  } catch (error) {
+    console.error('Logout API call failed, continuing client-side cleanup.');
+  }
+
+  // Remove tokens from localStorage
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+
+  // Delete cookies (for JWTs possibly stored in cookies)
+  document.cookie.split(";").forEach(c => {
+    document.cookie = c
+      .replace(/^ +/, "")
+      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+
+  // Redirect to login page
+  window.location.href = '/login';
+};
+
+// ✅ Attach logout event correctly
+if (logoutLink) {
+  logoutLink.addEventListener('click', handleLogout);
+}
 
     }); // DOMContentLoaded end
   </script>

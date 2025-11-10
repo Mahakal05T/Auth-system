@@ -29,6 +29,7 @@ no
 - dotenv for environment variables
 - bcrypt for password hashing
 - ratelimit for OTP protection
+- JWT 
 
 ---
 
@@ -56,6 +57,7 @@ bcrypt==4.1.2
 twilio==9.0.5
 python-dotenv==1.0.1
 ratelimit==2.2.1
+flask_jwt_extended
 ```
 
 Then install:
@@ -83,7 +85,10 @@ TWILIO_PHONE_NUMBER=your_twilio_phone_number
 # Email Settings (if using email OTPs)
 EMAIL_USER=your_email@example.com
 EMAIL_PASS=your_email_password
-SECRET_KEY=your_flask_secret_key
+
+#JWT Auth
+JWT_SECRET_KEY=
+JWT_EXPIRY_MINUTES
 ```
 
 > 🔥 Make sure to never push your `.env` file to public repositories!
@@ -111,6 +116,8 @@ http://127.0.0.1:5000/
       |-- register.html
       |-- forgot_password.html
       |-- reset_password.html
+      |-- Admin_dashboard.html
+      |-- Hr_dashboard.html
       |-- dashboard.html
   |-- /static
       |-- (CSS, JS, images)

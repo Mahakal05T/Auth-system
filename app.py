@@ -33,16 +33,12 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "credentials.env"))
 
 # Use dedicated JWT secret (fallback to existing SECRET_KEY if needed)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", "fallback_dev_key"))
-
-
 # Access token lifetime and refresh token lifetime
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)       # access token lifetime
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)      # refresh token lifetime
-
-jwt = JWTManager(app)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)       # access token lifetime
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)      # refresh token lifetime
 app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
 app.config["JWT_IDENTITY_CLAIM"] = "identity"
-
+jwt = JWTManager(app)
 
 
 # In-memory blocklist for revoked tokens (jti strings).
@@ -86,7 +82,14 @@ def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
 def is_strong_password(password):
-    return len(password) >= 8 and any(char.isdigit() for char in password) and any(not char.isalnum() for char in password)
+    return (
+        len(password) >= 8 and
+        re.search(r"[A-Z]", password) and
+        re.search(r"[a-z]", password) and
+        re.search(r"[0-9]", password) and
+        re.search(r"[^A-Za-z0-9]", password)
+    )
+
 
 def generate_employee_id():
     return "emp" + str(random.randint(1000, 9999))
@@ -174,6 +177,8 @@ def root():
     return redirect(url_for("login_user"))
 
 # ---- Login ----
+@sleep_and_retry
+@limits(calls=5, period=60)
 @app.route("/login", methods=["GET", "POST"])
 def login_user():
     if request.method == "GET":
@@ -269,9 +274,18 @@ def logout():
 @jwt_required(refresh=True)
 def refresh_access_token():
     identity = get_jwt_identity()
-    # Issue new access token
+    jti = get_jwt()["jti"]
+    JWT_BLOCKLIST.add(jti)  # revoke the old refresh token
+
+    # issue new tokens
     new_access = create_access_token(identity=identity)
-    return jsonify({"access_token": new_access}), 200
+    new_refresh = create_refresh_token(identity=identity)
+
+    return jsonify({
+        "access_token": new_access,
+        "refresh_token": new_refresh
+    }), 200
+
 
 # ---- Dashboards ---
 @app.route("/admin/dashboard")
@@ -741,6 +755,18 @@ def forgot_password_page():
 @app.route("/reset_password", methods=["GET"])
 def reset_password_page():
     return render_template("reset_password.html", token=request.args.get("token"))
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+
+    return response
 
 # ----------------- Run -----------------
 if __name__ == "__main__":

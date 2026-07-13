@@ -25,10 +25,10 @@ load_dotenv(os.path.join(BASE_DIR, "credentials.env"))
 app = Flask(__name__)
 
 # Configure CORS for React frontend
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173")
 # Since Render can have multiple domains, you could also use a comma-separated list
 # e.g. FRONTEND_URL="http://localhost:5173,https://my-app.onrender.com"
-origins = [url.strip() for url in frontend_url.split(",")]
+origins = [url.strip().rstrip('/') for url in frontend_url.split(",")]
 CORS(app, supports_credentials=True, origins=origins)
 
 _jwt_secret = os.getenv("JWT_SECRET_KEY")
@@ -47,7 +47,7 @@ app.config["JWT_REFRESH_COOKIE_NAME"] = "refresh_token_cookie"
 
 # Cookie security: SECURE=True requires HTTPS
 app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "false").lower() == "true"
-app.config["JWT_COOKIE_SAMESITE"] = "Lax"
+app.config["JWT_COOKIE_SAMESITE"] = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
 
 app.config["JWT_COOKIE_CSRF_PROTECT"] = True
 app.config["JWT_CSRF_IN_COOKIES"] = True

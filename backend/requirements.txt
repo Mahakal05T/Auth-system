@@ -1,0 +1,8 @@
+Flask==3.0.2
+psycopg2-binary
+bcrypt==4.1.2
+python-dotenv==1.0.1
+ratelimit==2.2.1
+gunicorn==21.2.0
+Flask-JWT-Extended==4.6.0
+resend==0.7.2

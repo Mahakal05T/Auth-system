@@ -1,1 +1,0 @@
-import{j as t}from"./index-D2I5OGqy.js";function s(){return t.jsxs("div",{className:"p-8 text-center",children:[t.jsx("h2",{className:"text-2xl font-bold text-gray-900 dark:text-white",children:"Profile Settings"}),t.jsx("p",{className:"text-gray-500 mt-2",children:"Coming soon!"})]})}export{s as default};

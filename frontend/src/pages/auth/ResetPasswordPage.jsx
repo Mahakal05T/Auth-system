@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { resetPasswordSchema } from '../../utils/validation';
 import { authService } from '../../services/api';
 import { PasswordStrength } from '../../components/forms/PasswordStrength';
@@ -11,9 +11,23 @@ import { PasswordStrength } from '../../components/forms/PasswordStrength';
 export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+
+  useEffect(() => {
+    if (!token) {
+      setIsValidating(false);
+      return;
+    }
+    
+    authService.verifyResetToken(token)
+      .then(() => setIsValidToken(true))
+      .catch(() => setIsValidToken(false))
+      .finally(() => setIsValidating(false));
+  }, [token]);
 
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(resetPasswordSchema)
@@ -35,6 +49,37 @@ export default function ResetPasswordPage() {
       toast.error(error.response?.data?.error || 'Failed to reset password');
     }
   };
+
+  if (isValidating) {
+    return (
+      <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+        <p className="text-gray-500 dark:text-gray-400">Verifying secure link...</p>
+      </div>
+    );
+  }
+
+  if (!isValidToken) {
+    return (
+      <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center space-y-6">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+          <AlertCircle size={32} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Link Expired</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            This password reset link is invalid or has already been used. Please request a new one.
+          </p>
+        </div>
+        <Link 
+          to="/forgot-password" 
+          className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-lg shadow-lg shadow-brand-500/30 transition-all flex justify-center items-center"
+        >
+          Request New Link
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-card rounded-3xl p-6 sm:p-8 space-y-6">

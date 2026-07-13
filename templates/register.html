@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+.animate-slideDown { animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { transform: translateY(-20px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+</style>
+</head>
+
+<body class="bg-gradient-to-br from-purple-700 via-indigo-700 to-blue-700 min-h-screen flex items-center justify-center p-4">
+
+<!-- Register Card -->
+<div class="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl w-full max-w-md p-8 text-white space-y-6">
+
+  <!-- Title -->
+  <div class="text-center">
+    <h2 class="text-3xl font-bold">Create an Account</h2>
+    <p class="text-gray-300 mt-1">Sign up to get started</p>
+  </div>
+
+  <!-- Register Form -->
+  <form id="registerForm" class="flex flex-col gap-4 relative animate-slideDown">
+
+    <!-- Name -->
+    <input type="text" id="name" placeholder="Full Name" required
+      class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+
+    <!-- Email -->
+    <input type="email" id="email" placeholder="Email Address" required
+      class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+
+    <!-- Phone -->
+    <input type="tel" id="phone" placeholder="Phone Number" required
+      class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+
+    <!-- Password -->
+    <div class="relative">
+      <input type="password" id="password" placeholder="Password" required
+        class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+      <button type="button" id="togglePassword" class="absolute right-3 top-2 text-gray-300 hover:text-white text-lg">👁️</button>
+    </div>
+    <p class="text-xs text-gray-400 -mt-2">Must be 8+ chars, with upper, lower, number, and special character.</p>
+
+    <!-- Confirm Password -->
+    <div class="relative">
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+        class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full placeholder-gray-300 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+      <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-2 text-gray-300 hover:text-white text-lg">👁️</button>
+    </div>
+
+    <!-- Error message display -->
+    <p id="formError" class="text-red-400 text-sm hidden"></p>
+
+    <button type="submit"
+      class="bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-semibold py-2 rounded-lg hover:from-cyan-500 hover:to-blue-600 shadow-lg transition">Sign Up</button>
+
+    <p class="text-center text-sm text-gray-300 mt-2">
+      Already have an account?
+      <a href="{{ url_for('login_user') }}" class="text-cyan-400 hover:underline font-medium">Log in</a>
+    </p>
+  </form>
+</div>
+
+<!-- Toast + Spinner -->
+<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
+  <div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+<script>
+const nameInput = document.getElementById("name");
+const emailInput = document.getElementById("email");
+const phoneInput = document.getElementById("phone");
+const passInput = document.getElementById("password");
+const confirmPassInput = document.getElementById("confirmPassword");
+const formError = document.getElementById("formError");
+
+function clearErrors() {
+  formError.classList.add("hidden");
+}
+
+[nameInput, emailInput, phoneInput, passInput, confirmPassInput].forEach(el => {
+    el.addEventListener("input", clearErrors);
+});
+
+function showToast(message, type = "success") {
+  const toast = document.createElement("div");
+  toast.className = `px-4 py-2 rounded shadow text-white ${
+    type === "error" ? "bg-red-500" : "bg-green-500"
+  } animate-slideDown`;
+  toast.textContent = message;
+  document.getElementById("toast-container").appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function setupPasswordToggle(toggleBtnId, inputId) {
+    document.getElementById(toggleBtnId).addEventListener("click", function() {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+            this.textContent = "🙈";
+        } else {
+            input.type = "password";
+            this.textContent = "👁️";
+        }
+    });
+}
+
+setupPasswordToggle("togglePassword", "password");
+setupPasswordToggle("toggleConfirmPassword", "confirmPassword");
+
+async function handleRegister(name, email, phone, password, confirmPassword) {
+  clearErrors();
+  
+  if (password !== confirmPassword) {
+      formError.textContent = "Passwords do not match";
+      formError.classList.remove("hidden");
+      return;
+  }
+  
+  document.getElementById("loading-spinner").classList.remove("hidden");
+
+  try {
+    const res = await fetch("/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, phone, password })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    document.getElementById("loading-spinner").classList.add("hidden");
+
+    if (!res.ok) {
+      formError.textContent = data.error || "Registration failed";
+      formError.classList.remove("hidden");
+      showToast(data.error || "Registration failed", "error");
+      return;
+    }
+
+    showToast(data.message, "success");
+
+    setTimeout(() => {
+      window.location.href = data.redirect;
+    }, 1500);
+
+  } catch (e) {
+    document.getElementById("loading-spinner").classList.add("hidden");
+    showToast("Server error", "error");
+  }
+}
+
+document.getElementById("registerForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  handleRegister(
+      nameInput.value,
+      emailInput.value,
+      phoneInput.value,
+      passInput.value,
+      confirmPassInput.value
+  );
+});
+</script>
+
+</body>
+</html>

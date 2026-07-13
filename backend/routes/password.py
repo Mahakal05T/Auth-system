@@ -60,7 +60,7 @@ def forgot_password():
                 # A better approach is to read FRONTEND_URL from env.
                 import os
                 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-                reset_url = f"{frontend_url}/reset_password?token={token}"
+                reset_url = f"{frontend_url}/reset-password?token={token}"
                 
                 send_reset_link_email(user["email"], reset_url)
                 return jsonify({"success": True, "message": "OTP verified. Reset link sent to email."}), 200
@@ -72,6 +72,7 @@ def forgot_password():
         hashed_otp = bcrypt.hashpw(new_otp.encode(), bcrypt.gensalt()).decode()
         expiry = datetime.now() + timedelta(minutes=10)
 
+        cursor.execute("DELETE FROM reset_links WHERE identifier=%s", (identifier,))
         cursor.execute("DELETE FROM otp_codes WHERE identifier=%s", (identifier,))
         cursor.execute(
             "INSERT INTO otp_codes (identifier, otp, expiry_time) VALUES (%s, %s, %s)",
@@ -120,6 +121,22 @@ def reset_password():
         cursor.execute("DELETE FROM reset_links WHERE token=%s", (token,))
         conn.commit()
         return jsonify({'success': True, 'message': 'Password reset successful'}), 200
+    finally:
+        cursor.close()
+        conn.close()
+
+@password_bp.route('/verify_reset_token/<token>', methods=['GET'])
+def verify_reset_token(token):
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT identifier FROM reset_links WHERE token=%s AND expiry_time > NOW()",
+            (token,)
+        )
+        if cursor.fetchone():
+            return jsonify({'success': True, 'message': 'Token is valid'}), 200
+        return jsonify({'success': False, 'error': 'Invalid or expired token'}), 400
     finally:
         cursor.close()
         conn.close()

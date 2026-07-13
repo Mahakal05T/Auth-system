@@ -1,1 +1,0 @@
-import{o as e}from"./index-CKIanqjR.js";var t=e();function n(){return(0,t.jsxs)(`div`,{className:`p-8 text-center`,children:[(0,t.jsx)(`h2`,{className:`text-2xl font-bold text-gray-900 dark:text-white`,children:`Profile Settings`}),(0,t.jsx)(`p`,{className:`text-gray-500 mt-2`,children:`Coming soon!`})]})}export{n as default};

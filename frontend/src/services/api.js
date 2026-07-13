@@ -3,7 +3,7 @@ import axios from 'axios';
 // Connect directly to the Flask backend URL. 
 // Uses VITE_API_URL if set (e.g. for production), otherwise defaults to local Flask server.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
   withCredentials: true, // Crucial for cookie-based JWTs
   headers: {
     'Content-Type': 'application/json',

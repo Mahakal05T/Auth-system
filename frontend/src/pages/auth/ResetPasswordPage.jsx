@@ -71,12 +71,6 @@ export default function ResetPasswordPage() {
             This password reset link is invalid or has already been used. Please request a new one.
           </p>
         </div>
-        <Link 
-          to="/forgot-password" 
-          className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-lg shadow-lg shadow-brand-500/30 transition-all flex justify-center items-center"
-        >
-          Request New Link
-        </Link>
       </div>
     );
   }

@@ -16,7 +16,9 @@ def send_email(to_email, subject, body):
         return True
 
     except Exception as e:
-        logging.exception(f"Resend error: {e}")
+        logging.exception("Resend error")
+        print("RESEND ERROR:", repr(e))
+        raise
         return False
 
 def send_otp_email(email, otp):

@@ -9,11 +9,21 @@ from ratelimit import RateLimitException
 
 from flask_jwt_extended import JWTManager
 
-from database import connect_db
+from database import connect_db, init_db
 from routes.auth import auth_bp
 from routes.admin import admin_bp
-from routes.dashboard import dashboard_bp
 from routes.password import password_bp
+from routes.products import products_bp, seed_catalog
+from routes.cart import cart_bp
+from routes.wishlist import wishlist_bp
+from routes.addresses import addresses_bp
+from routes.checkout import checkout_bp, seed_initial_coupons
+from routes.orders import orders_bp
+from routes.coupons import coupons_bp
+from routes.reviews import reviews_bp
+from routes.returns import returns_bp
+from routes.analytics import analytics_bp
+from routes.settings import settings_bp
 
 _log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
 logging.basicConfig(level=getattr(logging, _log_level, logging.WARNING),
@@ -23,6 +33,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, "credentials.env"))
 
 app = Flask(__name__)
+
+# Automatically create tables and seed catalog if empty
+try:
+    init_db()
+    conn = connect_db()
+    seed_catalog(conn)
+    conn.close()
+except Exception as e:
+    logging.warning(f"Could not auto-initialize DB tables on startup: {e}")
 
 # Configure CORS for React frontend
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173")
@@ -90,8 +109,18 @@ def missing_token_callback(reason):
 # Register Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
-app.register_blueprint(dashboard_bp)
 app.register_blueprint(password_bp)
+app.register_blueprint(products_bp)
+app.register_blueprint(cart_bp)
+app.register_blueprint(wishlist_bp)
+app.register_blueprint(addresses_bp)
+app.register_blueprint(checkout_bp)
+app.register_blueprint(orders_bp)
+app.register_blueprint(coupons_bp)
+app.register_blueprint(reviews_bp)
+app.register_blueprint(returns_bp)
+app.register_blueprint(analytics_bp)
+app.register_blueprint(settings_bp)
 
 # Health check route
 @app.route("/health", methods=["GET"])

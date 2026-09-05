@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authService, userService, adminService } from '../services/api';
+import { authService } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -13,32 +13,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // We try to fetch the dashboard to see if we're logged in.
-        // We don't know if we are admin or user initially, so we try user first, then admin if forbidden.
-        // Actually, the backend might just redirect or 401. Let's try user dashboard.
-        const userData = await userService.getDashboard();
-        
-        if (userData && userData.role) {
-          setUser(userData);
-          setRole(userData.role);
+        const res = await authService.getMe();
+        if (res.data?.success && res.data?.user) {
+          setUser(res.data.user);
+          setRole(res.data.role);
           setIsAuthenticated(true);
         } else {
-          // Maybe admin?
-          try {
-            const adminData = await adminService.getDashboard();
-            if (adminData && adminData.users) {
-              // We are admin. The admin dashboard doesn't return full user details for the logged-in admin natively in our parser, 
-              // but we can infer role='admin'.
-              setUser({ role: 'admin' }); 
-              setRole('admin');
-              setIsAuthenticated(true);
-            }
-          } catch(e) {
-            // Not admin either
-          }
+          setUser(null);
+          setRole(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
-        // Not authenticated
         setIsAuthenticated(false);
         setUser(null);
         setRole(null);
@@ -50,20 +35,19 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  const login = async (identifier, password) => {
-    const res = await authService.login(identifier, password);
+  const login = async (email, password) => {
+    const res = await authService.login(email, password);
     const data = res.data;
     if (data.role) {
       setRole(data.role);
       setIsAuthenticated(true);
-      // We don't get full user data from login, so we fetch it based on role
-      if (data.role === 'admin') {
-        setUser({ role: 'admin' }); // Will fully populate later if needed
+      if (data.user) {
+        setUser(data.user);
       } else {
-        const userData = await userService.getDashboard();
-        setUser(userData);
+        const meRes = await authService.getMe();
+        setUser(meRes.data.user);
       }
-      return data; // returns { message, role, redirect }
+      return data;
     }
     throw new Error('Login failed');
   };
@@ -81,9 +65,14 @@ export function AuthProvider({ children }) {
   };
 
   const refreshUser = async () => {
-    if (role === 'user') {
-      const userData = await userService.getDashboard();
-      setUser(userData);
+    try {
+      const res = await authService.getMe();
+      if (res.data?.success && res.data?.user) {
+        setUser(res.data.user);
+        setRole(res.data.role);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 

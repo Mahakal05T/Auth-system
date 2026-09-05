@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  identifier: z.string().min(1, 'Email or Employee ID is required'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -22,7 +22,7 @@ export const registerSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  identifier: z.string().min(1, 'Identifier is required'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
 });
 
 export const resetPasswordSchema = z.object({

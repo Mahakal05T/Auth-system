@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(loginSchema)
@@ -18,12 +19,17 @@ export default function LoginPage() {
 
   const onSubmit = async (data) => {
     try {
-      const res = await login(data.identifier, data.password);
+      const res = await login(data.email, data.password);
       toast.success(res.message || 'Login successful');
       
-      if (res.role === 'admin') navigate('/admin/dashboard');
-      else navigate('/dashboard');
-      
+      const intendedDestination = location.state?.from?.pathname;
+      if (intendedDestination && intendedDestination !== '/dashboard' && intendedDestination !== '/admin/dashboard') {
+        navigate(intendedDestination, { replace: true });
+      } else if (res.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Login failed');
     }
@@ -39,11 +45,12 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <input 
-            {...register('identifier')}
-            placeholder="Employee ID or Email" 
+            {...register('email')}
+            type="email"
+            placeholder="Email address" 
             className="w-full bg-white/50 dark:bg-black/20 border border-gray-300 dark:border-white/20 rounded-lg px-4 py-3 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
           />
-          {errors.identifier && <p className="text-red-500 text-sm mt-1">{errors.identifier.message}</p>}
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
         </div>
 
         <div>

@@ -24,18 +24,6 @@ def is_strong_password(password):
         re.search(r"[^A-Za-z0-9]", password)
     )
 
-def generate_employee_id(conn=None):
-    """Generate a unique, unpredictable employee ID."""
-    if conn:
-        while True:
-            emp_id = "emp" + secrets.token_hex(4).upper()
-            cur = conn.cursor()
-            cur.execute("SELECT 1 FROM users WHERE emp_id=%s", (emp_id,))
-            if not cur.fetchone():
-                cur.close()
-                return emp_id
-            cur.close()
-    return "emp" + secrets.token_hex(4).upper()
 
 def generate_random_password(length=10):
     characters = string.ascii_letters + string.digits + "!@#$%^&*()"

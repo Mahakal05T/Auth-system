@@ -25,9 +25,9 @@ def send_otp_email(email, otp):
 def send_reset_link_email(email, link):
     return send_email(email, "Reset Your Password", f"Reset link: {link}")
 
-def send_credentials_email(email, emp_id, password):
+def send_credentials_email(email, password):
     return send_email(
         email,
         "Your Account Credentials",
-        f"Welcome!\n\nYour employee ID: {emp_id}\nYour temporary password: {password}"
+        f"Welcome!\n\nYour account email: {email}\nYour temporary password: {password}"
     )

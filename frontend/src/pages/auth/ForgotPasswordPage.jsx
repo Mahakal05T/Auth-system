@@ -7,7 +7,7 @@ import { OTPInput } from '../../components/forms/OTPInput';
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState(1);
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -23,14 +23,14 @@ export default function ForgotPasswordPage() {
 
   const handleSendOtp = async (e) => {
     e?.preventDefault();
-    if (!identifier) {
-      toast.error('Enter Employee ID or Email');
+    if (!email) {
+      toast.error('Enter your email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await authService.forgotPassword(identifier);
+      const res = await authService.forgotPassword(email);
       toast.success(res.data.message || 'OTP Sent');
       setStep(2);
       setCountdown(30);
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await authService.forgotPassword(identifier, otp);
+      const res = await authService.forgotPassword(email, otp);
       toast.success('OTP verified! Check email for reset link.');
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
@@ -69,17 +69,17 @@ export default function ForgotPasswordPage() {
       <div className="text-center">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Forgot Password</h2>
         <p className="text-gray-500 dark:text-gray-300 mt-2">
-          {step === 1 ? 'Enter your details to receive an OTP' : 'Enter the OTP sent to your email'}
+          {step === 1 ? 'Enter your registered email to receive an OTP' : 'Enter the OTP sent to your email'}
         </p>
       </div>
 
       {step === 1 ? (
         <form onSubmit={handleSendOtp} className="space-y-4">
           <input 
-            type="text"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="Employee ID or Email" 
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email address" 
             className="w-full bg-white/50 dark:bg-black/20 border border-gray-300 dark:border-white/20 rounded-lg px-4 py-3 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
             required
           />
